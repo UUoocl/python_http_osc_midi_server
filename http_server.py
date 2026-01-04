@@ -264,6 +264,40 @@ class OBSServerHandler(http.server.SimpleHTTPRequestHandler):
                 obs.script_log(obs.LOG_ERROR, f"OSC Send Error: {traceback.format_exc()}")
                 self._send_error(str(e))
             return
+
+        # --- API: MIDI Send (Communication with midi_io.py) ---
+        # Route: /api/midi/send
+        if parsed_path.path == '/api/midi/send':
+            try:
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length)
+                body = json.loads(post_data.decode('utf-8'))
+
+                event_name = body.get('event_name')
+                data = body.get('data') # Expecting hex string or list of ints
+
+                if not data or not event_name:
+                    self._send_error("Missing MIDI data or event_name", 400)
+                    return
+
+                # Check for the shared MIDI manager
+                midi_manager = getattr(obs, 'midi_manager', None)
+                if not midi_manager:
+                    self._send_error("MIDI Script not loaded or registered", 503)
+                    return
+
+                # Execute the send via the shared manager
+                success = midi_manager["send"](event_name, data)
+                
+                if success:
+                    self._send_json({"success": True})
+                else:
+                    self._send_error(f"Device with event_name '{event_name}' not found or send failed", 404)
+
+            except Exception as e:
+                obs.script_log(obs.LOG_ERROR, f"MIDI Send Error: {traceback.format_exc()}")
+                self._send_error(str(e))
+            return
         
         # Fallback
         self.send_error(404)

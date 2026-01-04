@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDI Broadcast Listener</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .info-panel {
+            background-color: #252526;
+            padding: 20px;
+            border-left: 5px solid #4ec9b0;
+            margin-bottom: 20px;
+        }
+
+        h1 { margin-top: 0; font-size: 1.5em; color: #fff; }
+        h2 { font-size: 1.2em; color: #ccc; border-bottom: 1px solid #333; padding-bottom: 5px;}
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .log-box {
+            background-color: #000;
+            font-family: 'Consolas', monospace;
+            padding: 10px;
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            font-size: 0.9em;
+        }
+
+        .entry { 
+            margin-bottom: 4px; 
+            border-bottom: 1px solid #222; 
+            padding: 4px 0;
+            display: flex;
+            gap: 10px;
+        }
+        .entry .time { color: #569cd6; min-width: 80px; }
+        .entry .data { color: #ce9178; word-break: break-all; }
+        
+        .dev-note {
+            background-color: #2d2d30;
+            color: #6a9955;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.85em;
+            margin-top: 5px;
+            border: 1px dashed #444;
+        }
+        
+        .error-msg {
+            color: #f44747;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="info-panel">
+        <h1>MIDI Broadcast Listener</h1>
+        <p>This page listens to a specific <strong>BroadcastChannel</strong> and logs all incoming data.</p>
+        <p><strong>Channel Name:</strong> <span id="channel-name-display" style="color: #4ec9b0; font-weight: bold;">(Loading...)</span></p>
+        <p><strong>How to use:</strong></p>
+        <ol>
+            <li>Configure your MIDI script to use an event name (e.g., <code>midiDevice_0</code>).</li>
+            <li>Open <code>midi_monitor.html?event=midiDevice_0</code> in OBS or a browser.</li>
+            <li>Open this page with matching channel: <code>midi_listener.html?channel=midiDevice_0</code>.</li>
+        </ol>
+    </div>
+
+    <div class="container">
+        <div>
+            <h2>Broadcast Log</h2>
+            <div class="dev-note" id="dev-status">
+                // Waiting for channel configuration...
+            </div>
+            <div id="broadcast-log" class="log-box"></div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const channelName = urlParams.get('channel');
+        
+        const channelDisplay = document.getElementById('channel-name-display');
+        const devStatus = document.getElementById('dev-status');
+        const logBox = document.getElementById('broadcast-log');
+
+        function logEvent(data) {
+            const entry = document.createElement('div');
+            entry.className = 'entry';
+            
+            const now = new Date();
+            const time = now.toLocaleTimeString() + '.' + now.getMilliseconds().toString().padStart(3, '0');
+            
+            let displayData = data;
+            
+            try {
+                if (typeof data === 'object') {
+                    displayData = JSON.stringify(data);
+                }
+            } catch (e) {}
+            
+            entry.innerHTML = `<span class="time">[${time}]</span><span class="data">${displayData}</span>`;
+            logBox.insertBefore(entry, logBox.firstChild);
+
+            if (logBox.children.length > 100) {
+                logBox.removeChild(logBox.lastChild);
+            }
+        }
+
+        if (channelName) {
+            channelDisplay.textContent = channelName;
+            devStatus.innerHTML = `// Connected to BroadcastChannel: '${channelName}'<br>// Listening for MIDI packets...`;
+
+            const bc = new BroadcastChannel(channelName);
+
+            bc.onmessage = (event) => {
+            console.log(event)
+                logEvent(event.data);
+            };
+            
+            console.log(`Listening on BroadcastChannel: ${channelName}`);
+        } else {
+            channelDisplay.textContent = "None Specified";
+            channelDisplay.classList.add('error-msg');
+            devStatus.innerHTML = `// ERROR: No channel name provided.<br>// Add '?channel=NAME' to the URL.`;
+            logEvent("Error: No ?channel= parameter found in URL.");
+        }
+    </script>
+</body>
+</html>

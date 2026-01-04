@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Python Scripts &#8212; Python HTTP OSC MIDI Server 1.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=8d563738"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Frontend Utilities" href="frontend.html" />
+    <link rel="prev" title="Welcome to Python HTTP OSC MIDI Server’s documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="python-scripts">
+<h1>Python Scripts<a class="headerlink" href="#python-scripts" title="Link to this heading">¶</a></h1>
+<section id="module-http_server">
+<span id="http-server"></span><h2>HTTP Server<a class="headerlink" href="#module-http_server" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="http_server.OBSServerHandler">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">OBSServerHandler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#OBSServerHandler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.OBSServerHandler" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleHTTPRequestHandler</span></code></p>
+<p>Custom Request Handler to mimic the Fastify routes in serverLogic.ts</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="http_server.OBSServerHandler.do_GET">
+<span class="sig-name descname"><span class="pre">do_GET</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#OBSServerHandler.do_GET"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.OBSServerHandler.do_GET" title="Link to this definition">¶</a></dt>
+<dd><p>Serve a GET request.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="http_server.OBSServerHandler.do_OPTIONS">
+<span class="sig-name descname"><span class="pre">do_OPTIONS</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#OBSServerHandler.do_OPTIONS"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.OBSServerHandler.do_OPTIONS" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="http_server.OBSServerHandler.do_POST">
+<span class="sig-name descname"><span class="pre">do_POST</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#OBSServerHandler.do_POST"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.OBSServerHandler.do_POST" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="http_server.OBSServerHandler.log_message">
+<span class="sig-name descname"><span class="pre">log_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">format</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#OBSServerHandler.log_message"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.OBSServerHandler.log_message" title="Link to this definition">¶</a></dt>
+<dd><p>Log an arbitrary message.</p>
+<p>This is used by all other logging functions.  Override
+it if you have specific logging wishes.</p>
+<p>The first argument, FORMAT, is a format string for the
+message to be logged.  If the format string contains
+any % escapes requiring parameters, they should be
+specified as subsequent arguments (it’s just like
+printf!).</p>
+<p>The client ip and current date/time are prefixed to
+every message.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="http_server.ThreadingHTTPServer">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">ThreadingHTTPServer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">server_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">RequestHandlerClass</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bind_and_activate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#ThreadingHTTPServer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.ThreadingHTTPServer" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ThreadingMixIn</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">HTTPServer</span></code></p>
+<p>Handle requests in separate threads and allow immediate port reuse.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="http_server.ThreadingHTTPServer.allow_reuse_address">
+<span class="sig-name descname"><span class="pre">allow_reuse_address</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></span><a class="headerlink" href="#http_server.ThreadingHTTPServer.allow_reuse_address" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="http_server.ThreadingHTTPServer.daemon_threads">
+<span class="sig-name descname"><span class="pre">daemon_threads</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></span><a class="headerlink" href="#http_server.ThreadingHTTPServer.daemon_threads" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="http_server.on_port_changed">
+<span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">on_port_changed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">props</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#on_port_changed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.on_port_changed" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="http_server.on_wss_path_changed">
+<span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">on_wss_path_changed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">props</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#on_wss_path_changed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.on_wss_path_changed" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="http_server.script_defaults">
+<span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">script_defaults</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#script_defaults"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.script_defaults" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="http_server.script_description">
+<span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">script_description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#script_description"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.script_description" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="http_server.script_load">
+<span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">script_load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#script_load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.script_load" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="http_server.script_properties">
+<span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">script_properties</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#script_properties"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.script_properties" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="http_server.script_unload">
+<span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">script_unload</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#script_unload"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.script_unload" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="http_server.start_server">
+<span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">start_server</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">port</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#start_server"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.start_server" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="http_server.stop_server">
+<span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">stop_server</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#stop_server"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.stop_server" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="http_server.update_wss_details">
+<span class="sig-prename descclassname"><span class="pre">http_server.</span></span><span class="sig-name descname"><span class="pre">update_wss_details</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/http_server.html#update_wss_details"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#http_server.update_wss_details" title="Link to this definition">¶</a></dt>
+<dd><p>Parses the selected JSON config file and updates the global WSS_DETAILS variable.</p>
+</dd></dl>
+
+</section>
+<section id="module-midi_io">
+<span id="midi-io"></span><h2>MIDI IO<a class="headerlink" href="#module-midi_io" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="midi_io.MidiDevice">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">MidiDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#MidiDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.MidiDevice" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.add_device_properties">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">add_device_properties</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">props</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#add_device_properties"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.add_device_properties" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.device_count_callback">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">device_count_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">props</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#device_count_callback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.device_count_callback" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.midi_input_callback">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">midi_input_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_stamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#midi_input_callback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.midi_input_callback" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.script_defaults">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">script_defaults</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#script_defaults"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.script_defaults" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.script_description">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">script_description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#script_description"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.script_description" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.script_load">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">script_load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#script_load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.script_load" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.script_properties">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">script_properties</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#script_properties"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.script_properties" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.script_unload">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">script_unload</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#script_unload"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.script_unload" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.script_update">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">script_update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#script_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.script_update" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.send_midi_api">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">send_midi_api</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#send_midi_api"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.send_midi_api" title="Link to this definition">¶</a></dt>
+<dd><p>Bridge function called by the HTTP server.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.start_midi">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">start_midi</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#start_midi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.start_midi" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.start_midi_device">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">start_midi_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#start_midi_device"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.start_midi_device" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.stop_midi">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">stop_midi</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#stop_midi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.stop_midi" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="midi_io.stop_midi_device">
+<span class="sig-prename descclassname"><span class="pre">midi_io.</span></span><span class="sig-name descname"><span class="pre">stop_midi_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/midi_io.html#stop_midi_device"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#midi_io.stop_midi_device" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-osc_io">
+<span id="osc-io"></span><h2>OSC IO<a class="headerlink" href="#module-osc_io" title="Link to this heading">¶</a></h2>
+<section id="osc-io-browser-source-integration-refactored">
+<h3>OSC IO: Browser Source Integration (Refactored)<a class="headerlink" href="#osc-io-browser-source-integration-refactored" title="Link to this heading">¶</a></h3>
+<p>This script provides an OSC interface for OBS Studio using a class-based manager
+for improved efficiency and thread safety.</p>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="osc_io.OSCClient">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">osc_io.</span></span><span class="sig-name descname"><span class="pre">OSCClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#OSCClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.OSCClient" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Represents a target for OSC messages and an event source for Browser Sources.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="osc_io.OSCClient.matches">
+<span class="sig-name descname"><span class="pre">matches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">address</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#OSCClient.matches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.OSCClient.matches" title="Link to this definition">¶</a></dt>
+<dd><p>Check if an incoming OSC address matches this client’s filter.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="osc_io.OSCClient.send">
+<span class="sig-name descname"><span class="pre">send</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arguments</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#OSCClient.send"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.OSCClient.send" title="Link to this definition">¶</a></dt>
+<dd><p>Send an OSC message to this client.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="osc_io.OSCClient.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#OSCClient.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.OSCClient.to_dict" title="Link to this definition">¶</a></dt>
+<dd><p>Convert to dictionary for external script compatibility (bridge).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="osc_io.OSCManager">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">osc_io.</span></span><span class="sig-name descname"><span class="pre">OSCManager</span></span><a class="reference internal" href="_modules/osc_io.html#OSCManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.OSCManager" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Manages the OSC UDP server and the collection of OSC clients.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="osc_io.OSCManager.start_server">
+<span class="sig-name descname"><span class="pre">start_server</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#OSCManager.start_server"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.OSCManager.start_server" title="Link to this definition">¶</a></dt>
+<dd><p>Start the background OSC UDP server.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="osc_io.OSCManager.stop_server">
+<span class="sig-name descname"><span class="pre">stop_server</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#OSCManager.stop_server"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.OSCManager.stop_server" title="Link to this definition">¶</a></dt>
+<dd><p>Stop the OSC UDP server safely.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="osc_io.OSCManager.update_settings">
+<span class="sig-name descname"><span class="pre">update_settings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#OSCManager.update_settings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.OSCManager.update_settings" title="Link to this definition">¶</a></dt>
+<dd><p>Rebuild client list from current OBS settings.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="osc_io.add_client_ui">
+<span class="sig-prename descclassname"><span class="pre">osc_io.</span></span><span class="sig-name descname"><span class="pre">add_client_ui</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">props</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#add_client_ui"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.add_client_ui" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="osc_io.client_count_callback">
+<span class="sig-prename descclassname"><span class="pre">osc_io.</span></span><span class="sig-name descname"><span class="pre">client_count_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">props</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#client_count_callback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.client_count_callback" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="osc_io.populate_list_property">
+<span class="sig-prename descclassname"><span class="pre">osc_io.</span></span><span class="sig-name descname"><span class="pre">populate_list_property</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_property</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allowed_ids</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#populate_list_property"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.populate_list_property" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="osc_io.script_defaults">
+<span class="sig-prename descclassname"><span class="pre">osc_io.</span></span><span class="sig-name descname"><span class="pre">script_defaults</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#script_defaults"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.script_defaults" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="osc_io.script_description">
+<span class="sig-prename descclassname"><span class="pre">osc_io.</span></span><span class="sig-name descname"><span class="pre">script_description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#script_description"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.script_description" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="osc_io.script_load">
+<span class="sig-prename descclassname"><span class="pre">osc_io.</span></span><span class="sig-name descname"><span class="pre">script_load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#script_load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.script_load" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="osc_io.script_properties">
+<span class="sig-prename descclassname"><span class="pre">osc_io.</span></span><span class="sig-name descname"><span class="pre">script_properties</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#script_properties"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.script_properties" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="osc_io.script_unload">
+<span class="sig-prename descclassname"><span class="pre">osc_io.</span></span><span class="sig-name descname"><span class="pre">script_unload</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#script_unload"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.script_unload" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="osc_io.script_update">
+<span class="sig-prename descclassname"><span class="pre">osc_io.</span></span><span class="sig-name descname"><span class="pre">script_update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/osc_io.html#script_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#osc_io.script_update" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Python HTTP OSC MIDI Server</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Python Scripts</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-http_server">HTTP Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-midi_io">MIDI IO</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-osc_io">OSC IO</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="frontend.html">Frontend Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commentary.html">Developer Commentary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to Python HTTP OSC MIDI Server’s documentation!</a></li>
+      <li>Next: <a href="frontend.html" title="next chapter">Frontend Utilities</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Jon Wood.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/python_scripts.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

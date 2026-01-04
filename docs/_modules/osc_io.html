@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>osc_io &#8212; Python HTTP OSC MIDI Server 1.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=8d563738"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for osc_io</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">OSC IO: Browser Source Integration (Refactored)</span>
+<span class="sd">===============================================</span>
+<span class="sd">This script provides an OSC interface for OBS Studio using a class-based manager</span>
+<span class="sd">for improved efficiency and thread safety.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">obspython</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">obs</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pythonosc</span><span class="w"> </span><span class="kn">import</span> <span class="n">udp_client</span><span class="p">,</span> <span class="n">dispatcher</span><span class="p">,</span> <span class="n">osc_server</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">obs</span><span class="o">.</span><span class="n">script_log</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">LOG_ERROR</span><span class="p">,</span> <span class="s2">&quot;python-osc not found. Please install it with &#39;pip install python-osc&#39;&quot;</span><span class="p">)</span>
+
+<span class="c1"># --- Constants ---</span>
+<span class="n">DEFAULT_SERVER_IP</span> <span class="o">=</span> <span class="s2">&quot;127.0.0.1&quot;</span>
+<span class="n">DEFAULT_SERVER_PORT</span> <span class="o">=</span> <span class="mi">12345</span>
+<span class="n">MAX_CLIENTS</span> <span class="o">=</span> <span class="mi">10</span>
+
+<span class="c1"># --- Classes ---</span>
+
+<div class="viewcode-block" id="OSCClient">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.OSCClient">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OSCClient</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a target for OSC messages and an event source for Browser Sources.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">settings</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ip</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_string</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;client_ip_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_int</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;client_port_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">browser_source</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_string</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;browser_source_name_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">osc_address</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_string</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;osc_address_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">event_name</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_string</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;event_name_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;osc_event_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span>
+        
+        <span class="c1"># Persist UDP client to reuse the same socket</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_udp_client</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ip</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_udp_client</span> <span class="o">=</span> <span class="n">udp_client</span><span class="o">.</span><span class="n">SimpleUDPClient</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">obs</span><span class="o">.</span><span class="n">script_log</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">LOG_WARNING</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Could not create client for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="OSCClient.send">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.OSCClient.send">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">,</span> <span class="n">arguments</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send an OSC message to this client.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_udp_client</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_udp_client</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">arguments</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">obs</span><span class="o">.</span><span class="n">script_log</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">LOG_ERROR</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;OSC Send Error (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OSCClient.matches">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.OSCClient.matches">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">matches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if an incoming OSC address matches this client&#39;s filter.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">osc_address</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span> <span class="c1"># Match all if no filter set</span>
+        <span class="k">return</span> <span class="n">address</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">osc_address</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OSCClient.to_dict">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.OSCClient.to_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert to dictionary for external script compatibility (bridge).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;client_ip&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span>
+            <span class="s2">&quot;client_port&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
+            <span class="s2">&quot;browser_source_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser_source</span><span class="p">,</span>
+            <span class="s2">&quot;osc_address&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">osc_address</span><span class="p">,</span>
+            <span class="s2">&quot;event_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_name</span>
+        <span class="p">}</span></div>
+</div>
+
+
+<div class="viewcode-block" id="OSCManager">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.OSCManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OSCManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages the OSC UDP server and the collection of OSC clients.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clients</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server_thread</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_running</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="OSCManager.update_settings">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.OSCManager.update_settings">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">settings</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rebuild client list from current OBS settings.&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_int</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;number_of_clients&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">clients</span> <span class="o">=</span> <span class="p">[</span><span class="n">OSCClient</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span><span class="p">)]</span>
+            
+            <span class="c1"># Update the global bridge for the HTTP server</span>
+            <span class="n">obs</span><span class="o">.</span><span class="n">osc_manager</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;clients&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">clients</span><span class="p">],</span>
+                <span class="s2">&quot;send&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bridge_send</span>
+            <span class="p">}</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_bridge_send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client_dict</span><span class="p">,</span> <span class="n">address</span><span class="p">,</span> <span class="n">arguments</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Bridge function called by other scripts via obs.osc_manager.&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="c1"># Match by event_name which is our unique identifier</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">clients</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">event_name</span> <span class="o">==</span> <span class="n">client_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;event_name&quot;</span><span class="p">)),</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">target</span><span class="p">:</span>
+                <span class="n">target</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">arguments</span><span class="p">)</span>
+
+<div class="viewcode-block" id="OSCManager.start_server">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.OSCManager.start_server">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_server</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ip</span><span class="p">,</span> <span class="n">port</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start the background OSC UDP server.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_server</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">disp</span> <span class="o">=</span> <span class="n">dispatcher</span><span class="o">.</span><span class="n">Dispatcher</span><span class="p">()</span>
+            <span class="n">disp</span><span class="o">.</span><span class="n">set_default_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_osc_received</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server</span> <span class="o">=</span> <span class="n">osc_server</span><span class="o">.</span><span class="n">ThreadingOSCUDPServer</span><span class="p">((</span><span class="n">ip</span><span class="p">,</span> <span class="n">port</span><span class="p">),</span> <span class="n">disp</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">serve_forever</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_running</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">obs</span><span class="o">.</span><span class="n">script_log</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">LOG_INFO</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;OSC Server started on </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">obs</span><span class="o">.</span><span class="n">script_log</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">LOG_ERROR</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Failed to start OSC server: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OSCManager.stop_server">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.OSCManager.stop_server">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop the OSC UDP server safely.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">server_close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">server_thread</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server_thread</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_running</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">script_log</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">LOG_INFO</span><span class="p">,</span> <span class="s2">&quot;OSC Server stopped.&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_osc_received</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Callback for incoming OSC messages (runs in server thread).&quot;&quot;&quot;</span>
+        <span class="c1"># Note: Log level INFO shows in OBS script log window</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">script_log</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">LOG_INFO</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Received OSC: </span><span class="si">{</span><span class="n">address</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">client</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">clients</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">client</span><span class="o">.</span><span class="n">matches</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_to_obs</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">address</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+                    <span class="k">break</span> <span class="c1"># Only first match handles it</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_to_obs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="p">,</span> <span class="n">address</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward OSC data to an OBS Browser Source.&quot;&quot;&quot;</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_get_source_by_name</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">browser_source</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">source</span><span class="p">:</span>
+            <span class="n">json_string</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;address&quot;</span><span class="p">:</span> <span class="n">address</span><span class="p">,</span> <span class="s2">&quot;arguments&quot;</span><span class="p">:</span> <span class="n">args</span><span class="p">})</span>
+            <span class="n">cd</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">calldata_create</span><span class="p">()</span>
+            <span class="n">obs</span><span class="o">.</span><span class="n">calldata_set_string</span><span class="p">(</span><span class="n">cd</span><span class="p">,</span> <span class="s2">&quot;eventName&quot;</span><span class="p">,</span> <span class="n">client</span><span class="o">.</span><span class="n">event_name</span><span class="p">)</span>
+            <span class="n">obs</span><span class="o">.</span><span class="n">calldata_set_string</span><span class="p">(</span><span class="n">cd</span><span class="p">,</span> <span class="s2">&quot;jsonString&quot;</span><span class="p">,</span> <span class="n">json_string</span><span class="p">)</span>
+            
+            <span class="n">proc_handler</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_source_get_proc_handler</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+            <span class="n">obs</span><span class="o">.</span><span class="n">proc_handler_call</span><span class="p">(</span><span class="n">proc_handler</span><span class="p">,</span> <span class="s2">&quot;javascript_event&quot;</span><span class="p">,</span> <span class="n">cd</span><span class="p">)</span>
+            
+            <span class="n">obs</span><span class="o">.</span><span class="n">calldata_destroy</span><span class="p">(</span><span class="n">cd</span><span class="p">)</span>
+            <span class="n">obs</span><span class="o">.</span><span class="n">obs_source_release</span><span class="p">(</span><span class="n">source</span><span class="p">)</span></div>
+
+
+<span class="c1"># --- Global Instance ---</span>
+<span class="n">MANAGER</span> <span class="o">=</span> <span class="n">OSCManager</span><span class="p">()</span>
+
+<span class="c1"># --- OBS Script Callbacks ---</span>
+
+<div class="viewcode-block" id="script_description">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.script_description">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">script_description</span><span class="p">():</span>
+    <span class="k">return</span> <span class="s2">&quot;&lt;b&gt;OSC IO Refactored&lt;/b&gt;&lt;br&gt;Class-based OSC management for high performance.&quot;</span></div>
+
+
+<div class="viewcode-block" id="script_defaults">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.script_defaults">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">script_defaults</span><span class="p">(</span><span class="n">settings</span><span class="p">):</span>
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_set_default_string</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;server_ip&quot;</span><span class="p">,</span> <span class="n">DEFAULT_SERVER_IP</span><span class="p">)</span>
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_set_default_int</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;server_port&quot;</span><span class="p">,</span> <span class="n">DEFAULT_SERVER_PORT</span><span class="p">)</span>
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_set_default_int</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;number_of_clients&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="script_load">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.script_load">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">script_load</span><span class="p">(</span><span class="n">settings</span><span class="p">):</span>
+    <span class="n">MANAGER</span><span class="o">.</span><span class="n">update_settings</span><span class="p">(</span><span class="n">settings</span><span class="p">)</span>
+    <span class="c1"># Start server if IP/Port are provided</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_string</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;server_ip&quot;</span><span class="p">)</span>
+    <span class="n">port</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_int</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;server_port&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ip</span> <span class="ow">and</span> <span class="n">port</span><span class="p">:</span>
+        <span class="n">MANAGER</span><span class="o">.</span><span class="n">start_server</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="script_update">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.script_update">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">script_update</span><span class="p">(</span><span class="n">settings</span><span class="p">):</span>
+    <span class="n">MANAGER</span><span class="o">.</span><span class="n">update_settings</span><span class="p">(</span><span class="n">settings</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="script_unload">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.script_unload">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">script_unload</span><span class="p">():</span>
+    <span class="n">MANAGER</span><span class="o">.</span><span class="n">stop_server</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="s1">&#39;osc_manager&#39;</span><span class="p">):</span>
+        <span class="k">del</span> <span class="n">obs</span><span class="o">.</span><span class="n">osc_manager</span></div>
+
+
+<span class="c1"># --- UI Helpers ---</span>
+
+<div class="viewcode-block" id="populate_list_property">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.populate_list_property">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">populate_list_property</span><span class="p">(</span><span class="n">list_property</span><span class="p">,</span> <span class="n">allowed_ids</span><span class="p">):</span>
+    <span class="n">sources</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_enum_sources</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">sources</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">source</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">:</span>
+            <span class="n">unversioned_id</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_source_get_unversioned_id</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">unversioned_id</span> <span class="ow">in</span> <span class="n">allowed_ids</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_source_get_name</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+                <span class="n">obs</span><span class="o">.</span><span class="n">obs_property_list_add_string</span><span class="p">(</span><span class="n">list_property</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">source_list_release</span><span class="p">(</span><span class="n">sources</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="client_count_callback">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.client_count_callback">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">client_count_callback</span><span class="p">(</span><span class="n">props</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">settings</span><span class="p">):</span>
+    <span class="c1"># Brute force refresh of client groups</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">MAX_CLIENTS</span><span class="p">):</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_remove_by_name</span><span class="p">(</span><span class="n">props</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;client_group_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="n">count</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_int</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;number_of_clients&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
+        <span class="n">add_client_ui</span><span class="p">(</span><span class="n">props</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="add_client_ui">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.add_client_ui">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_client_ui</span><span class="p">(</span><span class="n">props</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_create</span><span class="p">()</span>
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_add_text</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;client_ip_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;IP Address&quot;</span><span class="p">,</span> <span class="n">obs</span><span class="o">.</span><span class="n">OBS_TEXT_DEFAULT</span><span class="p">)</span>
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_add_int</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;client_port_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Port&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">65535</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">browser_prop</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_add_list</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;browser_source_name_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Target Browser Source&quot;</span><span class="p">,</span> 
+                                             <span class="n">obs</span><span class="o">.</span><span class="n">OBS_COMBO_TYPE_LIST</span><span class="p">,</span> <span class="n">obs</span><span class="o">.</span><span class="n">OBS_COMBO_FORMAT_STRING</span><span class="p">)</span>
+    <span class="n">populate_list_property</span><span class="p">(</span><span class="n">browser_prop</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;browser_source&quot;</span><span class="p">])</span>
+
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_add_text</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;osc_address_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;OSC Address Filter&quot;</span><span class="p">,</span> <span class="n">obs</span><span class="o">.</span><span class="n">OBS_TEXT_DEFAULT</span><span class="p">)</span>
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_add_text</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;event_name_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Unique Event Name&quot;</span><span class="p">,</span> <span class="n">obs</span><span class="o">.</span><span class="n">OBS_TEXT_DEFAULT</span><span class="p">)</span>
+
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_add_group</span><span class="p">(</span><span class="n">props</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;client_group_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Client </span><span class="si">{</span><span class="n">index</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">obs</span><span class="o">.</span><span class="n">OBS_GROUP_NORMAL</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="script_properties">
+<a class="viewcode-back" href="../python_scripts.html#osc_io.script_properties">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">script_properties</span><span class="p">(</span><span class="n">settings</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">props</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_create</span><span class="p">()</span>
+    
+    <span class="c1"># Server Settings</span>
+    <span class="n">server_group</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_create</span><span class="p">()</span>
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_add_text</span><span class="p">(</span><span class="n">server_group</span><span class="p">,</span> <span class="s2">&quot;server_ip&quot;</span><span class="p">,</span> <span class="s2">&quot;Server IP&quot;</span><span class="p">,</span> <span class="n">obs</span><span class="o">.</span><span class="n">OBS_TEXT_DEFAULT</span><span class="p">)</span>
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_add_int</span><span class="p">(</span><span class="n">server_group</span><span class="p">,</span> <span class="s2">&quot;server_port&quot;</span><span class="p">,</span> <span class="s2">&quot;Server Port&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">65535</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_add_button</span><span class="p">(</span><span class="n">server_group</span><span class="p">,</span> <span class="s2">&quot;btn_start&quot;</span><span class="p">,</span> <span class="s2">&quot;Restart Server&quot;</span><span class="p">,</span> 
+                                <span class="k">lambda</span> <span class="n">p</span><span class="p">,</span> <span class="n">pr</span><span class="p">:</span> <span class="n">MANAGER</span><span class="o">.</span><span class="n">start_server</span><span class="p">(</span>
+                                    <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_string</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;server_ip&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">settings</span> <span class="k">else</span> <span class="n">DEFAULT_SERVER_IP</span><span class="p">,</span>
+                                    <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_int</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;server_port&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">settings</span> <span class="k">else</span> <span class="n">DEFAULT_SERVER_PORT</span>
+                                <span class="p">))</span>
+    
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_add_group</span><span class="p">(</span><span class="n">props</span><span class="p">,</span> <span class="s2">&quot;server_group&quot;</span><span class="p">,</span> <span class="s2">&quot;Global OSC Server&quot;</span><span class="p">,</span> <span class="n">obs</span><span class="o">.</span><span class="n">OBS_GROUP_NORMAL</span><span class="p">,</span> <span class="n">server_group</span><span class="p">)</span>
+
+    <span class="c1"># Client Count</span>
+    <span class="n">p_count</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_properties_add_int</span><span class="p">(</span><span class="n">props</span><span class="p">,</span> <span class="s2">&quot;number_of_clients&quot;</span><span class="p">,</span> <span class="s2">&quot;Number of Clients&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">MAX_CLIENTS</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">obs</span><span class="o">.</span><span class="n">obs_property_set_modified_callback</span><span class="p">(</span><span class="n">p_count</span><span class="p">,</span> <span class="n">client_count_callback</span><span class="p">)</span>
+
+    <span class="c1"># Initial UI Load</span>
+    <span class="k">if</span> <span class="n">settings</span><span class="p">:</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">obs_data_get_int</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;number_of_clients&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
+            <span class="n">add_client_ui</span><span class="p">(</span><span class="n">props</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">props</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Python HTTP OSC MIDI Server</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../python_scripts.html">Python Scripts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../frontend.html">Frontend Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../commentary.html">Developer Commentary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Jon Wood.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

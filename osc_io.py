@@ -1,6 +1,6 @@
 """
 OSC IO: Browser Source Integration (Refactored)
-==============================================
+===============================================
 This script provides an OSC interface for OBS Studio using a class-based manager
 for improved efficiency and thread safety.
 """
