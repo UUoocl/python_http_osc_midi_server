@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broadcast Channel Listener</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .info-panel {
+            background-color: #252526;
+            padding: 20px;
+            border-left: 5px solid #dcdcaa;
+            margin-bottom: 20px;
+        }
+
+        h1 { margin-top: 0; font-size: 1.5em; color: #fff; }
+        h2 { font-size: 1.2em; color: #ccc; border-bottom: 1px solid #333; padding-bottom: 5px;}
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .log-box {
+            background-color: #000;
+            font-family: 'Consolas', monospace;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            font-size: 0.9em;
+        }
+
+        .entry { margin-bottom: 4px; border-bottom: 1px solid #222; }
+        .entry .time { color: #569cd6; margin-right: 10px; }
+        .entry .data { color: #ce9178; }
+        
+        /* Developer commentary style */
+        .dev-note {
+            background-color: #2d2d30;
+            color: #6a9955;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.85em;
+            margin-top: 5px;
+            border: 1px dashed #444;
+        }
+        
+        .error-msg {
+            color: #f44747;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- USER COMMENTARY -->
+    <div class="info-panel">
+        <h1>Broadcast Channel Listener</h1>
+        <p>This page listens to a specific <strong>BroadcastChannel</strong> and logs all incoming messages.</p>
+        <p><strong>Channel Name:</strong> <span id="channel-name-display" style="color: #ce9178; font-weight: bold;">(Loading...)</span></p>
+        <p><strong>How to use:</strong></p>
+        <ol>
+            <li>Open the main OSC Monitor page (e.g., <code>osc_monitor.html?event=my_event</code>).</li>
+            <li>Open this page with the matching channel name: <code>osc_listener.html?channel=my_event</code>.</li>
+            <li>Events received by the monitor will be broadcast here automatically.</li>
+        </ol>
+    </div>
+
+    <div class="container">
+        <div>
+            <h2>Incoming Messages</h2>
+            <div class="dev-note" id="dev-status">
+                // Waiting for channel configuration...
+            </div>
+            <div id="broadcast-log" class="log-box"></div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * DEVELOPER COMMENTARY:
+         * 
+         * The BroadcastChannel API allows communication between different browsing contexts 
+         * (windows, tabs, frames) capable of sharing the same origin.
+         * 
+         * This page dynamically connects to the channel specified in the '?channel=' URL parameter.
+         */
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const channelName = urlParams.get('channel');
+        
+        const channelDisplay = document.getElementById('channel-name-display');
+        const devStatus = document.getElementById('dev-status');
+        const logBox = document.getElementById('broadcast-log');
+
+        function logEvent(data) {
+            const entry = document.createElement('div');
+            entry.className = 'entry';
+            
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+            let displayData = data;
+            
+            try {
+                // If it's an object, stringify it for display
+                if (typeof data === 'object') {
+                    displayData = JSON.stringify(data);
+                }
+            } catch (e) {
+                // Fallback if stringify fails
+            }
+            
+            entry.innerHTML = `<span class="time">[${time}]</span><span class="data">${displayData}</span>`;
+            logBox.insertBefore(entry, logBox.firstChild);
+
+            // Keep log size manageable
+            if (logBox.children.length > 50) {
+                logBox.removeChild(logBox.lastChild);
+            }
+        }
+
+        if (channelName) {
+            channelDisplay.textContent = channelName;
+            devStatus.innerHTML = `// Connected to channel: '${channelName}'<br>// Listening for messages...`;
+
+            // Connect to the channel
+            const bc = new BroadcastChannel(channelName);
+
+            bc.onmessage = (event) => {
+                // event.data contains the message sent
+                logEvent(event.data);
+            };
+            
+            console.log(`Listening on BroadcastChannel: ${channelName}`);
+        } else {
+            channelDisplay.textContent = "None Specified";
+            channelDisplay.classList.add('error-msg');
+            devStatus.innerHTML = `// ERROR: No channel name provided.<br>// Add '?channel=NAME' to the URL.`;
+            
+            logEvent("Error: No channel parameter provided in URL.");
+        }
+
+    </script>
+</body>
+</html>

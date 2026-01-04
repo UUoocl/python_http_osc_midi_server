@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSC Monitor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 20px;
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars for overlay use */
+        }
+        .card {
+            background-color: #252526;
+            border-left: 5px solid #007acc;
+            border-radius: 3px;
+            padding: 10px 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            transition: background-color 0.2s;
+        }
+        .card.active {
+            background-color: #37373d;
+        }
+        .header {
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #808080;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .content {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 1.1em;
+            display: flex;
+            flex-direction: column; /* Column for OSC details */
+            gap: 5px;
+        }
+        .osc-address {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #ce9178;
+        }
+        .osc-args {
+            font-size: 1em;
+            color: #9cdcfe;
+            word-break: break-all;
+        }
+        .history-item {
+            font-size: 0.9em;
+            color: #569cd6;
+            background: #1e1e1e;
+            padding: 4px 6px;
+            border-radius: 3px;
+            opacity: 0.8;
+            margin-bottom: 4px;
+            display: flex;
+            gap: 10px;
+        }
+        .history-address {
+            color: #ce9178;
+            font-weight: bold;
+        }
+        /* Specific border colors */
+        #message-card { border-left-color: #dcdcaa; } /* Yellowish for message */
+        #history-card { border-left-color: #9cdcfe; } /* Light blue for history */
+        
+        .waiting {
+            color: #606060;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="card" id="message-card">
+        <div class="header">
+            <span>Last OSC Message</span>
+            <span id="event-name-display"></span>
+        </div>
+        <div class="content" id="message-content">
+            <span class="waiting">Waiting for event...</span>
+        </div>
+    </div>
+
+    <div class="card" id="history-card">
+        <div class="header">History</div>
+        <div class="content" id="history-content">
+            <span class="waiting">...</span>
+        </div>
+    </div>
+
+    <script>
+        // Get event name from query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventName = urlParams.get('event');
+
+        // Create broadcast channel if eventName is provided
+        const broadcastChannel = eventName ? new BroadcastChannel(eventName) : null;
+
+        // Display the event name we are listening for
+        if (eventName) {
+            document.getElementById('event-name-display').textContent = `Listening: ${eventName}`;
+        } else {
+            document.getElementById('event-name-display').textContent = 'No event specified';
+            document.getElementById('message-content').innerHTML = '<span style="color: #f44747;">Error: ?event=NAME parameter missing</span>';
+        }
+
+        const maxHistory = 8;
+        const historyQueue = [];
+
+        function setContent(elementId, html) {
+            document.getElementById(elementId).innerHTML = html;
+        }
+
+        function flashCard(cardId) {
+            const card = document.getElementById(cardId);
+            card.classList.remove('active');
+            void card.offsetWidth; // trigger reflow
+            card.classList.add('active');
+            setTimeout(() => card.classList.remove('active'), 200);
+        }
+
+        function formatArgs(args) {
+            if (!args || args.length === 0) return '<span style="color: #606060;">(no arguments)</span>';
+            // If args is array, join them. If single value, just show it.
+            if (Array.isArray(args)) {
+                return args.map(arg => JSON.stringify(arg)).join(', ');
+            }
+            return JSON.stringify(args);
+        }
+
+        function updateHistory(address, args) {
+            const entry = { address, args };
+            historyQueue.unshift(entry);
+            if (historyQueue.length > maxHistory) {
+                historyQueue.pop();
+            }
+            
+            const historyHtml = historyQueue.map(item => `
+                <div class="history-item">
+                    <span class="history-address">${item.address}</span>
+                    <span>${formatArgs(item.args)}</span>
+                </div>
+            `).join('');
+            setContent('history-content', historyHtml);
+        }
+
+        // --- OBS Bridge ---
+        window.onEvent = function(eventName, jsonString) {
+            window.dispatchEvent(new CustomEvent(eventName, { 
+                detail: { jsonString: jsonString } 
+            }));
+        };
+
+        if (eventName) {
+            window.addEventListener(eventName, (event) => {
+            console.log(event)
+                try {
+                    // Post to broadcast channel
+                    if (broadcastChannel) {
+                        broadcastChannel.postMessage(event.detail);
+                    }
+
+                    let detail = event.detail;
+                    
+                    // Handle potential wrapping or stringification
+                    if (detail && typeof detail === 'string') {
+                        try {
+                            detail = JSON.parse(detail);
+                        } catch (e) {
+                            console.warn("Failed to parse event.detail string", e);
+                        }
+                    } else if (detail && detail.jsonString && typeof detail.jsonString === 'string') {
+                         try {
+                            detail = JSON.parse(detail.jsonString);
+                        } catch (e) {
+                            console.warn("Failed to parse detail.jsonString", e);
+                        }
+                    }
+
+                    if (!detail) return;
+
+                    const address = detail.address || 'Unknown Address';
+                    const args = detail.arguments || [];
+
+                    // Update Main Display
+                    const html = `
+                        <span class="osc-address">${address}</span>
+                        <span class="osc-args">${formatArgs(args)}</span>
+                    `;
+                    setContent('message-content', html);
+                    
+                    // Update History
+                    updateHistory(address, args);
+                    
+                    // Flash the card
+                    flashCard('message-card');
+                    flashCard('history-card');
+
+                } catch (e) {
+                    console.error(`Error handling ${eventName}`, e);
+                }
+            });
+            
+            // For testing in browser console:
+            // window.dispatchEvent(new CustomEvent('my_event', { detail: { address: "/test/addr", arguments: [1, "hello", 3.14] } }))
+            // OR
+            // window.dispatchEvent(new CustomEvent('my_event', { detail: { jsonString: '{"address": "/test/addr", "arguments": [1, "hello", 3.14]}' } }))
+            console.log(`Ready to listen for '${eventName}'`);
+        }
+    </script>
+</body>
+</html>
